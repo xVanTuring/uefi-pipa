@@ -1,9 +1,12 @@
 # pipa for UniXNU
 
+> **Work in progress.** Prepared without the tablet; nothing here has run on a
+> Xiaomi Pad 6 yet.
+
 This branch adds UniXNU to the Mu-Silicium pipa port (Kona, SM8250). It is
 not hardware validated: nothing of it has run on a Xiaomi Pad 6 yet. The board
-file, the ADT generator and the build steps are in the UniXNU-pipa device
-repository.
+file, the ADT generator and the build steps are in the
+[UniXNU-pipa](https://github.com/xVanTuring/UniXNU-pipa) device repository.
 
 ## Changes
 
