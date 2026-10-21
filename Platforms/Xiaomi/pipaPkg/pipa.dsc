@@ -83,3 +83,15 @@
   # ACPI Tables
   #
   pipa/AcpiTables.inf
+
+  #
+  # UniXNU: the boot manager, its registrar, the ramdisk block device and the XNU loader
+  #
+  UniXNUPkg/Application/UniXNU/UniXNU.inf
+  UniXNUPkg/Driver/UniXNUDxe/UniXNUDxe.inf
+  shengPkg/Drivers/ShengBootMemoryDxe/ShengBootMemoryDxe.inf
+  DarwinBootPkg/Driver/DarwinBoot.inf
+
+[LibraryClasses]
+  UniXNULib|UniXNUPkg/Library/UniXNULib/UniXNULib.inf
+  FdtLib|MdePkg/Library/BaseFdtLib/BaseFdtLib.inf

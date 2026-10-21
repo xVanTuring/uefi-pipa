@@ -46,6 +46,14 @@
   INF FatPkg/EnhancedFatDxe/Fat.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
 
+  # The boot image's ramdisk (the UniXNU payload volume) as a read-only block
+  # device. The driver takes every range from the device tree the previous
+  # stage hands over, so the shengPkg driver serves this board unchanged.
+  INF shengPkg/Drivers/ShengBootMemoryDxe/ShengBootMemoryDxe.inf
+  # The XNU loader is part of the firmware: a driver loaded from a volume is
+  # refused by the image verification of this build.
+  INF DarwinBootPkg/Driver/DarwinBoot.inf
+
   INF Binaries/pipa/QcomPkg/Drivers/DALSYSDxe/DALSYSDxe.inf
   INF Binaries/pipa/QcomPkg/Drivers/ClockDxe/ClockDxe.inf
   INF Binaries/pipa/QcomPkg/Drivers/VcsDxe/VcsDxe.inf
