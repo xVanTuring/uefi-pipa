@@ -12,6 +12,10 @@ APRIORI DXE {
   INF EmbeddedPkg/MetronomeDxe/MetronomeDxe.inf
   INF ArmPkg/Drivers/TimerDxe/TimerDxe.inf
 
+  # The DDR from EnvDxe's RAM partition protocol, before the vendor drivers: dispatched after them, RamManagerDxe never ran
+  # on a 16 GB pipa, because they and the memory protection's guard pages used up the DXE heap first.
+  INF SiliciumPkg/Drivers/RamManagerDxe/RamManagerDxe.inf
+
   INF Binaries/pipa/QcomPkg/Drivers/SmemDxe/SmemDxe.inf
   INF Binaries/pipa/QcomPkg/Drivers/DALSYSDxe/DALSYSDxe.inf
   INF Binaries/pipa/QcomPkg/Drivers/HWIODxe/HWIODxe.inf

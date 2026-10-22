@@ -13,11 +13,20 @@ gMemoryDescriptor[] = {
   {"TZApps",            0x82400000, 0x03A00000, HobOnlyNoCacheSetting, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
   {"PIL Reserved",      0x86200000, 0x0C500000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
   {"ADSP RPC",          0x92700000, 0x00800000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
-  {"DXE Heap",          0x98900000, 0x03300000, AddMem, SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK_XN},
+  // Grown down to the end of ADSP RPC (was 0x98900000, 51 MiB): on a 16 GB pipa with the UniXNU modules, ShmBridgeDxe ran
+  // out of pages for its translation tables while TzDxe started, before RamManagerDxe adds the rest of the DDR. Android's
+  // device tree keeps nothing between 0x92700000 and 0x9C000000.
+  {"DXE Heap",          0x92F00000, 0x08D00000, AddMem, SYS_MEM, SYS_MEM_CAP, Conv,   WRITE_BACK_XN},
   {"Display Reserved",  0x9C000000, 0x02400000, AddMem, MEM_RES, SYS_MEM_CAP, Reserv, WRITE_THROUGH_XN},
   {"UEFI FD",           0x9FC00000, 0x00300000, AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK},
   {"UEFI Stack",        0x9FF90000, 0x00040000, AddMem, SYS_MEM, SYS_MEM_CAP, BsData, WRITE_BACK_XN},
   {"Info Blk",          0x9FFFF000, 0x00001000, AddMem, SYS_MEM, SYS_MEM_CAP, RtData, WRITE_BACK_XN},
+  // Where the ABL loads a boot image's kernel and ramdisk (Android 14: kernel 0xA0080000, initrd up to 0xAFFFED11), as sheng's
+  // "Kernel": once RamManagerDxe adds the DDR, nothing may hand out the UniXNU payload before ShengBootMemoryDxe publishes it.
+  {"Kernel",            0xA0000000, 0x10000000, AddMem, MEM_RES, SYS_MEM_CAP, Reserv, WRITE_BACK_XN},
+  // The stock kernel's ramoops area (ramoops_memreserve=4M): RamoopsLogLib keeps the debug output in its console zone. Reserved
+  // here, so neither RamManagerDxe nor the XNU loader hands it out.
+  {"RAM Log",           0xB0000000, 0x00400000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
 
   // Other Memory Regions
   {"IMEM Base",         0x14680000, 0x00040000, NoHob,  MMAP_IO, INITIALIZED, Conv,   NS_DEVICE},

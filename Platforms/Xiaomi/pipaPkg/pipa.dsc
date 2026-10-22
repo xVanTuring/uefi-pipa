@@ -67,11 +67,26 @@
   #
   gQcomPkgTokenSpaceGuid.PcdPlatformType|"LA"
 
+!if $(TARGET) == DEBUG
+  #
+  # Debug: an ASSERT prints and returns instead of halting (SiliciumPkg's DEBUG mask 0x2F has
+  # DEBUG_PROPERTY_ASSERT_DEADLOOP_ENABLED). RamoopsLogLib restarts into fastboot on the ASSERT line itself, so the
+  # mask only matters when that restart fails.
+  #
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x0F
+!endif
+
 [LibraryClasses]
   #
   # Memory Libraries
   #
   MemoryMapLib|pipaPkg/Library/MemoryMapLib/MemoryMapLib.inf
+
+  #
+  # Debug output also in the stock kernel's ramoops console zone (0xB0000000); an ASSERT restarts into fastboot with a
+  # warm reset, and UniXNU-pipa's log reader fetches the log
+  #
+  RamLogLib|pipaPkg/Library/RamoopsLogLib/RamoopsLogLib.inf
 
   #
   # QCOM Libraries
