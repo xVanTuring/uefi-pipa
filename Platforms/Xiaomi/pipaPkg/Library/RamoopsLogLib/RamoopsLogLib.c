@@ -1,7 +1,8 @@
 /** @file
   RamLogLib for pipa: the debug output is also kept in the stock kernel's ramoops console zone, and an ASSERT restarts the
   tablet into fastboot with a warm reset, so the log reader of UniXNU-pipa (package/linux-log) fetches the whole firmware log
-  as /sys/fs/pstore/console-ramoops-0.
+  as /sys/fs/pstore/console-ramoops-0. From Sec's first line on, the PON also makes the power key's long press (and power
+  with volume down) a warm reset with the bootloader reason, so a hang held over with the keys keeps its log as well.
 
   The stock kernel reserves 4 MiB at 0xB0000000 for ramoops (its built-in ramoops_memreserve=4M: a 2 MiB console zone, then a
   2 MiB pmsg zone, no ECC). A zone is a persistent_ram_buffer: the signature "DBGC", the write position and the used size,
@@ -63,6 +64,10 @@
 #define PON_PERIPH_TYPE       0x01
 #define PON_GEN2_PRIMARY      0x04
 #define PON_GEN2_SECONDARY    0x05
+#define PON_KPDPWR_S2_CTL     0x42                            // the power key's S2 (long press) reset
+#define PON_KPDPWR_S2_CTL2    0x43
+#define PON_COMBO_S2_CTL      0x4A                            // power key and volume down together
+#define PON_COMBO_S2_CTL2     0x4B
 #define PON_PS_HOLD_RST_CTL   0x5A
 #define PON_PS_HOLD_RST_CTL2  0x5B
 #define PON_SOFT_RB_SPARE     0x8F
@@ -84,6 +89,15 @@ STATIC BOOLEAN  mRestarting;
 
 STATIC
 VOID
+ResetHeader (VOID)
+{
+  MmioWrite32 (RAMOOPS_CONSOLE_BASE,     RAMOOPS_SIGNATURE);
+  MmioWrite32 (RAMOOPS_CONSOLE_BASE + 4, 0);
+  MmioWrite32 (RAMOOPS_CONSOLE_BASE + 8, 0);
+}
+
+STATIC
+VOID
 AppendByte (
   IN UINT8  Byte)
 {
@@ -92,7 +106,7 @@ AppendByte (
 
   // Start over when something else left a Header behind
   if (MmioRead32 (RAMOOPS_CONSOLE_BASE) != RAMOOPS_SIGNATURE || Start >= RAMOOPS_DATA_SIZE || Size > RAMOOPS_DATA_SIZE) {
-    RamLogReset ();
+    ResetHeader ();
     Start = 0;
     Size  = 0;
   }
@@ -204,7 +218,41 @@ SpmiUpdate8 (
 }
 
 //
-// The PON's reboot reason and PS_HOLD reset type; a Code for the Log, 0 when both were written.
+// One reset source's type set to warm, as qpnp_config_reset and qpnp_pon_system_pwr_off do it: the reset off, at least 10
+// sleep clock cycles, the type, the reset on again when it was on.
+//
+STATIC
+EFI_STATUS
+SetWarmReset (
+  IN UINTN  Observer,
+  IN UINTN  Channel,
+  IN UINT8  Control,
+  IN UINT8  Control2)
+{
+  UINT8      Enable = 0;
+  EFI_STATUS Status = SpmiRead8 (Observer, Control2, &Enable);
+
+  if (!EFI_ERROR (Status) && (Enable & PON_RESET_EN)) {
+    Status = SpmiUpdate8 (Observer, Channel, Control2, PON_RESET_EN, 0);
+    MicroSecondDelay (500);
+  }
+
+  if (!EFI_ERROR (Status)) {
+    Status = SpmiUpdate8 (Observer, Channel, Control, PON_RESET_TYPE_MASK, PON_WARM_RESET);
+  }
+
+  if (!EFI_ERROR (Status) && (Enable & PON_RESET_EN)) {
+    Status = SpmiUpdate8 (Observer, Channel, Control2, PON_RESET_EN, PON_RESET_EN);
+  }
+
+  return Status;
+}
+
+//
+// The PON's reboot reason (bootloader) and the warm type for every reset that ends a firmware run: PS_HOLD (a restart by
+// software) and the S2 resets of the power key and of power plus volume down (the keys held over a hang; the hard reset the
+// stock firmware leaves there loses the log). Linux sets its own types from the device tree when it starts. A Code for the
+// Log, 0 when all were written.
 //
 STATIC
 UINT32
@@ -260,18 +308,15 @@ PrepareWarmFastboot (VOID)
     return 0x30;
   }
 
-  // As qpnp_pon_system_pwr_off: Reset off, at least 10 Sleep Clock Cycles, the Type, Reset on
-  if (EFI_ERROR (SpmiUpdate8 (Observer, Channel, PON_PS_HOLD_RST_CTL2, PON_RESET_EN, 0))) {
+  if (EFI_ERROR (SetWarmReset (Observer, Channel, PON_PS_HOLD_RST_CTL, PON_PS_HOLD_RST_CTL2))) {
     return 0x40;
   }
 
-  MicroSecondDelay (500);
-
-  if (EFI_ERROR (SpmiUpdate8 (Observer, Channel, PON_PS_HOLD_RST_CTL, PON_RESET_TYPE_MASK, PON_WARM_RESET))) {
+  if (EFI_ERROR (SetWarmReset (Observer, Channel, PON_KPDPWR_S2_CTL, PON_KPDPWR_S2_CTL2))) {
     return 0x41;
   }
 
-  if (EFI_ERROR (SpmiUpdate8 (Observer, Channel, PON_PS_HOLD_RST_CTL2, PON_RESET_EN, PON_RESET_EN))) {
+  if (EFI_ERROR (SetWarmReset (Observer, Channel, PON_COMBO_S2_CTL, PON_COMBO_S2_CTL2))) {
     return 0x42;
   }
 
@@ -332,9 +377,13 @@ VOID
 EFIAPI
 RamLogReset (VOID)
 {
-  MmioWrite32 (RAMOOPS_CONSOLE_BASE,     RAMOOPS_SIGNATURE);
-  MmioWrite32 (RAMOOPS_CONSOLE_BASE + 4, 0);
-  MmioWrite32 (RAMOOPS_CONSOLE_BASE + 8, 0);
+  ResetHeader ();
+
+  // From the first Line on, every Reset that ends this Run keeps the Log and comes back in fastboot
+  UINT32 Code = PrepareWarmFastboot ();
+  AppendText ("RamLog: 0xB0000000, resets warm into fastboot, PON 0x");
+  AppendHex (Code);
+  AppendText (Code == 0 ? "\n" : " (not prepared: a key reset loses the log)\n");
 }
 
 VOID

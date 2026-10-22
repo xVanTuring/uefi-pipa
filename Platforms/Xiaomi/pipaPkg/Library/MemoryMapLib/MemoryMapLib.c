@@ -7,9 +7,15 @@ gMemoryDescriptor[] = {
 
   // DDR Regions
   {"HYP",               0x80000000, 0x00600000, AddMem, SYS_MEM, SYS_MEM_CAP, Reserv, NS_DEVICE},
+  // The no-map regions of Android's device tree that this table did not list (Android's /proc/iomem leaves them out of System
+  // RAM): once RamManagerDxe runs from the APRIORI list it adds every gap of the RAM partitions, and allocations went down into
+  // them; the boot stopped silently after GraphicsConsoleDxe (2026-10-22), as on sheng's external abort at 0x8BB300000.
+  {"XBL AOP",           0x80600000, 0x00260000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
   {"AOP CMD DB",        0x80860000, 0x00020000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
   {"GPU PRR",           0x80880000, 0x00010000, AddMem, MEM_RES, WRITE_COMBINEABLE, Reserv, UNCACHED_UNBUFFERED_XN },
+  {"XBL UEFI Log",      0x80890000, 0x00004000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
   {"SMEM",              0x80900000, 0x00200000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
+  {"Removed",           0x80B00000, 0x01900000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
   {"TZApps",            0x82400000, 0x03A00000, HobOnlyNoCacheSetting, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
   {"PIL Reserved",      0x86200000, 0x0C500000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
   {"ADSP RPC",          0x92700000, 0x00800000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
@@ -27,6 +33,8 @@ gMemoryDescriptor[] = {
   // The stock kernel's ramoops area (ramoops_memreserve=4M): RamoopsLogLib keeps the debug output in its console zone. Reserved
   // here, so neither RamManagerDxe nor the XNU loader hands it out.
   {"RAM Log",           0xB0000000, 0x00400000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
+  {"Display Ramdump",   0xB0400000, 0x01000000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
+  {"Bank 1 Hole",       0xFFC00000, 0x00020000, AddMem, MEM_RES, UNCACHEABLE, Reserv, UNCACHED_UNBUFFERED_XN},
 
   // Other Memory Regions
   {"IMEM Base",         0x14680000, 0x00040000, NoHob,  MMAP_IO, INITIALIZED, Conv,   NS_DEVICE},
