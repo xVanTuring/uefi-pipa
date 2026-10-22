@@ -1,6 +1,7 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/CacheMaintenanceLib.h>
 #include <Library/MemoryMapHelperLib.h>
+#include <Library/RamLogLib.h>
 #include <Library/SerialPortLib.h>
 #include <Library/TimerLib.h>
 
@@ -303,15 +304,6 @@ SerialPortWrite (
   EFI_PHYSICAL_ADDRESS FbBase;
   UINT64               FbLength;
 
-  // Get Frame Buffer Memory
-  Status = GetFrameBufferMemory (&FbBase, &FbLength);
-  if (EFI_ERROR (Status)) {
-    return 0;
-  }
-
-  // Use the Geometry of the Frame Buffer that is really scanned out
-  LoadGeometry (FbBase, FbLength);
-
   // Get Interrupts State
   BOOLEAN InterruptState = ArmGetInterruptState ();
 
@@ -319,6 +311,22 @@ SerialPortWrite (
   if (InterruptState) {
     ArmDisableInterrupts ();
   }
+
+  // Keep a Copy in Memory first: a Platform Instance may restart here on an ASSERT
+  RamLogWrite (Buffer, NumberOfBytes);
+
+  // Get Frame Buffer Memory
+  Status = GetFrameBufferMemory (&FbBase, &FbLength);
+  if (EFI_ERROR (Status)) {
+    if (InterruptState) {
+      ArmEnableInterrupts ();
+    }
+
+    return 0;
+  }
+
+  // Use the Geometry of the Frame Buffer that is really scanned out
+  LoadGeometry (FbBase, FbLength);
 
   // Write Debug Message to Frame Buffer
   for (UINTN i = 0; i < NumberOfBytes; i++) {

@@ -42,6 +42,7 @@
   MemoryMapHelperLib
   MemoryInitPeiLib
   PlatformPeiLib
+  RamLogLib
   SerialPortLib
   PrintLib
   TimerLib

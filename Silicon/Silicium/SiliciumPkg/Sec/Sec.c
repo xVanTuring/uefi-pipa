@@ -13,6 +13,7 @@
 #include <Library/PrePiHobListPointerLib.h>
 #include <Library/CacheMaintenanceLib.h>
 #include <Library/MemoryMapHelperLib.h>
+#include <Library/RamLogLib.h>
 #include <Library/TimerLib.h>
 #include <Library/HobLib.h>
 
@@ -139,6 +140,9 @@ SecMain (VOID)
   if (EFI_ERROR (Status)) {
     return;
   }
+
+  // Start this Boot's Memory Log before the first Line
+  RamLogReset ();
 
   // Print Firmware Version
   PrintFirmwareVersion ();
